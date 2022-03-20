@@ -1,0 +1,119 @@
+#Packages #Pacotes
+library(pvclust)
+library(vegan)
+library(betapart)
+library(factoextra) #package makes the cluster colored, but it needs to be 'hclust' object #pacote que faz o cluster colorido, mas precisar ser objeto 'hclust'
+library(dendextend)
+library(ggplot2)
+library(ggdendro)
+
+
+x_abund <- read.table("Data.txt", header=TRUE) # Data matrix = Sample units in rows; species in columns and cover for specie (Londo scale) in sample unit with valor of table
+x_abund_t = t(x_abund)
+
+#Pair-to-pair distance (turnover) for abundance matrix # Distância (turnover) par-a-par para matriz de abundâncias ####
+t_funct_abund = function(n)
+{ n_transp = t(n)
+  n_transplog = decostand(n_transp,method = "log")
+  n_beta = beta.pair.abund(n_transplog, index.family = "bray")
+  n_beta$beta.bray.bal}
+  
+#Cophenetic correlation # Correlação cofenética 
+# to decide which cluster method is best (upgma, ward or wpgma) 
+                                #we do a cophenetic correlation 
+# para decidir qual método de cluster é o melhor (upgma, ward ou wpgma) 
+                                #fazemos uma correlação cofenética
+# between the distance of the original data and the distance in the clusters:
+#entre a distância dos dados orginais e a distância nos clusters:
+
+turn = t_funct_abund(x_abund_t)
+
+fit.upgma <- hclust(turn, method="average")
+fit.wpgma <- hclust(turn, method="mcquitty")
+fit.ward <- hclust(turn, method="ward.D2")
+
+coph.upgma = cophenetic(fit.upgma)
+coph.ward = cophenetic(fit.ward)
+coph.wpgma = cophenetic(fit.wpgma)
+
+cor(turn, coph.upgma) #pros dois casos (pres/abund) esse é o melhor método
+cor(turn, coph.ward) 
+cor(turn, coph.wpgma) 
+
+# Building a cluster with UPGMA and testing group consistency with bootstrap
+# Montando cluster com UPGMA e testando consistência dos grupos com bootstrap
+#Initially with 10 repetitions"(nboot=10)", then 10000 (generally recommended is 9999)
+#Inicialmente com 10 repetições"(nboot=10)", depois 10000 (geralmente o recomendado é 9999).
+
+
+upgma.total10 <- pvclust(x_abund_t, method.hclust= "average",
+                         method.dist = t_funct_abund, nboot=10)
+upgma.total10000 <- pvclust(x_abund_t, method.hclust= "average",
+                    method.dist = t_funct_abund, nboot=10000)
+
+#### Clusters ####
+#Visualization of nboot=10
+
+plot(upgma.total10, hang=-1, cex.pv=0.5, #hang = -1 deixa tudo emparelhado na base
+     cex=0.8, print.num=FALSE, family= "serif",
+     main = "UPGMA dendrogram of Grasslands with p values (%)")
+
+#The main arguments for controlling titles and labels are:  
+# "main" (main title), "sub" (subtitle), "xlab" (x axis labels) e "ylab" (x axis labels y).
+
+# Os principais argumentos para controlar títulos e rótulos são:
+#  main (título principal), sub (subtítulo), xlab (rótulos do eixo x) e ylab (rótulos do eixo y).
+
+abline(h=0.85,  col="blue") 
+pvrect(upgma.total10000, alpha=0.5) # add rectangles around groups highly supported by the data
+d.pv <- as.dendrogram(upgma.total10000$hclust) #transform 'pvclust' object into 'hclust' object to be able to use other graphics packages
+                                            #transforma objeto 'pvclust' em objeto 'hclust' pra poder usar outros pacotes de gráficos
+fviz_dend(d.pv, k = 25, # Cut in five groups #K! = NULL (all in black) 
+ 
+ #It will not always classify the colors as we wish, for this, we can divide the chart into several subgroups to color according to interest.
+ #Nem sempre ele vai classificar as cores conforme desejamos, para isso, podemos dividir o gráfico em vários subgrupos para irmos colorindo conforme o interesse. 
+ 
+          show_labels	= TRUE, #"False" remove sample units; "True" show sample units
+          cex = 0.6, # label size
+          k_colors = c("black", "#fe019a", "#fe019a", 
+                       "#fe019a", "#fe019a","#fe019a",
+                       "#008B8B","#008B8B","#008B8B","#008B8B",
+                       "#008B8B","#008B8B","#008B8B","black",
+                       "black","#DAA520","#228B22","#228B22","#228B22",
+                       "#228B22", "#8B0000","#8B0000","#8B0000","#8B0000","#8B0000","#8B0000"),
+          horiz = TRUE,
+          main = "UPGMA dendrogram of coastal enviroments")
+          #xlab = "Sampling sites", rect = TRUE,)
+ggsave("dendograma.png", width = 90, height = 240, unit = "mm", dpi = 600)
+
+#Visuzalization of nboot=10000
+plot(upgma.total10, hang=-1, cex.pv=0.5, #hang = -1 deixa tudo emparelhado na base
+     cex=0.8, print.num=FALSE, family= "serif",
+     main = "UPGMA dendrogram of Grasslands with p values (%)")
+
+#The main arguments for controlling titles and labels are:  
+# "main" (main title), "sub" (subtitle), "xlab" (x axis labels) e "ylab" (x axis labels y).
+
+# Os principais argumentos para controlar títulos e rótulos são:
+#  main (título principal), sub (subtítulo), xlab (rótulos do eixo x) e ylab (rótulos do eixo y).
+
+abline(h=0.85,  col="blue") 
+pvrect(upgma.total10, alpha=0.5) # add rectangles around groups highly supported by the data
+d.pv <- as.dendrogram(upgma.total10$hclust) #transform 'pvclust' object into 'hclust' object to be able to use other graphics packages
+                                            #transforma objeto 'pvclust' em objeto 'hclust' pra poder usar outros pacotes de gráficos
+fviz_dend(d.pv, 
+          k = 25, # Cut in five groups #K! = NULL (all in black) 
+ #It will not always classify the colors as we wish, for this, we can divide the chart into several subgroups to color according to interest.
+ #Nem sempre ele vai classificar as cores conforme desejamos, para isso, podemos dividir o gráfico em vários subgrupos para irmos colorindo conforme o interesse. 
+          show_labels	= TRUE, #"False" remove sample units; "True" show sample units
+          cex = 0.6, # label size
+          k_colors = c("black", "#fe019a", "#fe019a", 
+                       "#fe019a", "#fe019a","#fe019a",
+                       "#008B8B","#008B8B","#008B8B","#008B8B",
+                       "#008B8B","#008B8B","#008B8B","black",
+                       "black","#DAA520","#228B22","#228B22","#228B22",
+                       "#228B22", "#8B0000","#8B0000","#8B0000","#8B0000","#8B0000","#8B0000"),
+          horiz = TRUE,
+          main = "UPGMA dendrogram of coastal enviroments")
+          #xlab = "Sampling sites", rect = TRUE,)
+ggsave("dendograma.png", width = 90, height = 240, unit = "mm", dpi = 600)
